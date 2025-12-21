@@ -52,8 +52,10 @@ class StackViewPanel {
             if (message.command === 'openFile') {
                 const frame = this.frames[message.frameIndex];
                 if (frame) {
+                    const targetColumn = this.panel?.viewColumn === vscode.ViewColumn.One ? vscode.ViewColumn.Two : vscode.ViewColumn.One;
                     vscode.window.showTextDocument(frame.uri, {
-                        selection: frame.range
+                        selection: frame.range,
+                        viewColumn: targetColumn
                     });
                 }
             }
@@ -78,7 +80,7 @@ class StackViewPanel {
             const lines = frame.content.split('\n');
             const numberedLines = lines.map((line, lineIndex) => {
                 const lineNumber = lineIndex + 1;
-                return `<div class="code-line"><span class="line-number">${lineNumber}</span><span class="line-content" data-frame="${index}" data-line="${lineIndex}" oncontextmenu="handleRightClick(event, ${index}, ${lineIndex})">${this.escapeHtml(line)}</span></div>`;
+                return `<div class="code-line"><span class="line-number">${lineNumber}</span><span class="line-content" data-frame="${index}" data-line="${lineIndex}" onclick="handleClick(event, ${index}, ${lineIndex})" oncontextmenu="handleRightClick(event, ${index}, ${lineIndex})">${this.escapeHtml(line)}</span></div>`;
             }).join('');
             return `
             <div class="frame">
@@ -155,7 +157,7 @@ class StackViewPanel {
                     color: var(--vscode-errorForeground);
                 }
                 .frame-body {
-                    max-height: 400px;
+                    max-height: 30vh;
                     overflow: auto;
                     background: var(--vscode-editor-background);
                 }
@@ -184,9 +186,22 @@ class StackViewPanel {
                     padding-right: 8px;
                     cursor: text;
                     user-select: text;
+                    position: relative;
                 }
                 .line-content:hover {
                     background: var(--vscode-editor-hoverHighlightBackground);
+                }
+                .caret {
+                    position: absolute;
+                    width: 1px;
+                    height: 1em;
+                    background: var(--vscode-editorCursor-foreground);
+                    animation: blink 1s infinite;
+                    pointer-events: none;
+                }
+                @keyframes blink {
+                    0%, 50% { opacity: 1; }
+                    51%, 100% { opacity: 0; }
                 }
                 .context-menu {
                     background: var(--vscode-menu-background);
@@ -209,6 +224,27 @@ class StackViewPanel {
             
             <script>
                 const vscode = acquireVsCodeApi();
+                let currentCaret = null;
+                
+                function handleClick(event, frameIndex, lineIndex) {
+                    // Remove existing caret
+                    if (currentCaret) {
+                        currentCaret.remove();
+                    }
+                    
+                    // Create new caret
+                    const caret = document.createElement('div');
+                    caret.className = 'caret';
+                    
+                    // Position caret at click location
+                    const rect = event.target.getBoundingClientRect();
+                    const clickX = event.clientX - rect.left;
+                    caret.style.left = clickX + 'px';
+                    caret.style.top = '0px';
+                    
+                    event.target.appendChild(caret);
+                    currentCaret = caret;
+                }
                 
                 function openFile(frameIndex) {
                     vscode.postMessage({
