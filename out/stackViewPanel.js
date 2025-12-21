@@ -51,6 +51,12 @@ class StackViewPanel {
                     });
                 }
             }
+            else if (message.command === 'goToDefinition') {
+                const frame = this.frames[message.frameIndex];
+                if (frame) {
+                    this.handleGoToDefinition(frame.uri, message.line, message.character);
+                }
+            }
         });
     }
     updateWebview() {
@@ -63,7 +69,7 @@ class StackViewPanel {
             const lines = frame.content.split('\n');
             const numberedLines = lines.map((line, lineIndex) => {
                 const lineNumber = lineIndex + 1;
-                return `<div class="code-line"><span class="line-number">${lineNumber}</span><span class="line-content">${this.escapeHtml(line)}</span></div>`;
+                return `<div class="code-line"><span class="line-number">${lineNumber}</span><span class="line-content" data-frame="${index}" data-line="${lineIndex}" oncontextmenu="handleRightClick(event, ${index}, ${lineIndex})">${this.escapeHtml(line)}</span></div>`;
             }).join('');
             return `
             <div class="frame">
@@ -146,6 +152,25 @@ class StackViewPanel {
                 .line-content {
                     flex: 1;
                     padding-right: 8px;
+                    cursor: text;
+                    user-select: text;
+                }
+                .line-content:hover {
+                    background: var(--vscode-editor-hoverHighlightBackground);
+                }
+                .context-menu {
+                    background: var(--vscode-menu-background);
+                    border: 1px solid var(--vscode-menu-border);
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                }
+                .menu-item {
+                    padding: 6px 12px;
+                    cursor: pointer;
+                    font-size: 12px;
+                }
+                .menu-item:hover {
+                    background: var(--vscode-menu-selectionBackground);
+                    color: var(--vscode-menu-selectionForeground);
                 }
             </style>
         </head>
@@ -161,6 +186,49 @@ class StackViewPanel {
                         frameIndex: frameIndex
                     });
                 }
+                
+                function handleRightClick(event, frameIndex, lineIndex) {
+                    event.preventDefault();
+                    
+                    // Get the clicked position within the line
+                    const selection = window.getSelection();
+                    const range = selection.getRangeAt(0);
+                    const character = range.startOffset;
+                    
+                    // Show context menu and handle go to definition
+                    const contextMenu = document.createElement('div');
+                    contextMenu.className = 'context-menu';
+                    contextMenu.innerHTML = '<div class="menu-item" onclick="goToDefinition(' + frameIndex + ', ' + lineIndex + ', ' + character + ')">Go to Definition (StackView)</div>';
+                    contextMenu.style.position = 'absolute';
+                    contextMenu.style.left = event.pageX + 'px';
+                    contextMenu.style.top = event.pageY + 'px';
+                    contextMenu.style.background = 'var(--vscode-menu-background)';
+                    contextMenu.style.border = '1px solid var(--vscode-menu-border)';
+                    contextMenu.style.borderRadius = '3px';
+                    contextMenu.style.padding = '4px 0';
+                    contextMenu.style.zIndex = '1000';
+                    
+                    document.body.appendChild(contextMenu);
+                    
+                    // Remove menu on click elsewhere
+                    setTimeout(() => {
+                        document.addEventListener('click', function removeMenu() {
+                            if (contextMenu.parentNode) {
+                                contextMenu.parentNode.removeChild(contextMenu);
+                            }
+                            document.removeEventListener('click', removeMenu);
+                        });
+                    }, 10);
+                }
+                
+                function goToDefinition(frameIndex, line, character) {
+                    vscode.postMessage({
+                        command: 'goToDefinition',
+                        frameIndex: frameIndex,
+                        line: line,
+                        character: character
+                    });
+                }
             </script>
         </body>
         </html>`;
@@ -172,6 +240,19 @@ class StackViewPanel {
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
+    }
+    async handleGoToDefinition(uri, line, character) {
+        const definitions = await vscode.commands.executeCommand('vscode.executeDefinitionProvider', uri, new vscode.Position(line, character));
+        if (!definitions || definitions.length === 0) {
+            vscode.window.showInformationMessage('No definition found');
+            return;
+        }
+        const def = definitions[0];
+        const targetUri = 'targetUri' in def ? def.targetUri : def.uri;
+        const range = 'targetSelectionRange' in def ? def.targetSelectionRange : def.range;
+        if (!range)
+            return;
+        await this.addFrame(targetUri, range);
     }
 }
 exports.StackViewPanel = StackViewPanel;
