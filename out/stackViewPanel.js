@@ -47,6 +47,7 @@ class StackViewPanel {
         });
         this.panel.onDidDispose(() => {
             this.panel = undefined;
+            this.frames = [];
         });
         this.panel.webview.onDidReceiveMessage(message => {
             if (message.command === 'openFile') {
