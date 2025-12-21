@@ -42,6 +42,13 @@ export class StackViewPanel {
         }
     }
 
+    removeFrame(index: number) {
+        if (index >= 0 && index < this.frames.length) {
+            this.frames.splice(index, 1);
+            this.updateWebview();
+        }
+    }
+
     private showPanel() {
         if (this.panel) {
             this.panel.reveal();
@@ -75,6 +82,8 @@ export class StackViewPanel {
                 if (frame) {
                     this.handleGoToDefinition(frame.uri, message.line, message.character);
                 }
+            } else if (message.command === 'removeFrame') {
+                this.removeFrame(message.frameIndex);
             }
         });
     }
@@ -97,7 +106,10 @@ export class StackViewPanel {
             <div class="frame">
                 <div class="frame-header">
                     <span class="file-name">${frame.fileName}:${frame.lineNumber}</span>
-                    <button onclick="openFile(${index})" class="open-button">Open in Editor</button>
+                    <div class="header-buttons">
+                        <button onclick="openFile(${index})" class="open-button">Open in Editor</button>
+                        <button onclick="removeFrame(${index})" class="close-button">×</button>
+                    </div>
                 </div>
                 <div class="frame-body">
                     <div class="code-container">${numberedLines}</div>
@@ -135,6 +147,10 @@ export class StackViewPanel {
                     font-size: 12px;
                     font-weight: 500;
                 }
+                .header-buttons {
+                    display: flex;
+                    gap: 4px;
+                }
                 .open-button {
                     background: var(--vscode-button-background);
                     color: var(--vscode-button-foreground);
@@ -146,6 +162,20 @@ export class StackViewPanel {
                 }
                 .open-button:hover {
                     background: var(--vscode-button-hoverBackground);
+                }
+                .close-button {
+                    background: transparent;
+                    color: var(--vscode-foreground);
+                    border: none;
+                    padding: 2px 6px;
+                    border-radius: 3px;
+                    cursor: pointer;
+                    font-size: 16px;
+                    line-height: 1;
+                }
+                .close-button:hover {
+                    background: var(--vscode-toolbar-hoverBackground);
+                    color: var(--vscode-errorForeground);
                 }
                 .frame-body {
                     max-height: 400px;
@@ -250,6 +280,13 @@ export class StackViewPanel {
                         frameIndex: frameIndex,
                         line: line,
                         character: character
+                    });
+                }
+                
+                function removeFrame(frameIndex) {
+                    vscode.postMessage({
+                        command: 'removeFrame',
+                        frameIndex: frameIndex
                     });
                 }
             </script>
