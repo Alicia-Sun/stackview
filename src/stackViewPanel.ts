@@ -17,10 +17,9 @@ export class StackViewPanel {
 
     async addFrame(uri: vscode.Uri, range: vscode.Range) {
         const document = await vscode.workspace.openTextDocument(uri);
-        const startLine = Math.max(0, range.start.line - 20);
-        const endLine = Math.min(document.lineCount - 1, range.end.line + 20);
         
-        const content = document.getText(new vscode.Range(startLine, 0, endLine, 0));
+        // Get the entire file content instead of just surrounding lines
+        const content = document.getText();
         const fileName = path.basename(uri.fsPath);
         
         const frame: CodeFrame = {
@@ -82,17 +81,25 @@ export class StackViewPanel {
     }
 
     private getWebviewContent(): string {
-        const framesHtml = this.frames.map((frame, index) => `
+        const framesHtml = this.frames.map((frame, index) => {
+            const lines = frame.content.split('\n');
+            const numberedLines = lines.map((line, lineIndex) => {
+                const lineNumber = lineIndex + 1;
+                return `<div class="code-line"><span class="line-number">${lineNumber}</span><span class="line-content">${this.escapeHtml(line)}</span></div>`;
+            }).join('');
+            
+            return `
             <div class="frame">
                 <div class="frame-header">
                     <span class="file-name">${frame.fileName}:${frame.lineNumber}</span>
                     <button onclick="openFile(${index})" class="open-button">Open in Editor</button>
                 </div>
                 <div class="frame-body">
-                    <pre><code>${this.escapeHtml(frame.content)}</code></pre>
+                    <div class="code-container">${numberedLines}</div>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
 
         return `<!DOCTYPE html>
         <html>
@@ -140,15 +147,29 @@ export class StackViewPanel {
                     overflow: auto;
                     background: var(--vscode-editor-background);
                 }
-                pre {
-                    margin: 0;
-                    padding: 12px;
+                .code-container {
                     font-family: var(--vscode-editor-font-family);
                     font-size: var(--vscode-editor-font-size);
                     line-height: var(--vscode-editor-line-height);
-                }
-                code {
                     color: var(--vscode-editor-foreground);
+                }
+                .code-line {
+                    display: flex;
+                    white-space: pre;
+                }
+                .line-number {
+                    color: var(--vscode-editorLineNumber-foreground);
+                    background: var(--vscode-editor-background);
+                    padding: 0 8px;
+                    text-align: right;
+                    min-width: 40px;
+                    user-select: none;
+                    border-right: 1px solid var(--vscode-editorLineNumber-foreground);
+                    margin-right: 8px;
+                }
+                .line-content {
+                    flex: 1;
+                    padding-right: 8px;
                 }
             </style>
         </head>

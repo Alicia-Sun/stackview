@@ -1,6 +1,7 @@
 // app.js - Main application
 import { processUserData, processOrderData } from './dataProcessor.js';
 import { formatMessage } from './utils.js';
+import { functionA, functionE, functionH } from './bigFile.js';
 
 function initializeApp() {
     const welcomeMessage = formatMessage("Application started", "APP");
@@ -30,4 +31,9 @@ const testOrders = [
 ];
 const orderResult = handleOrderProcessing(testOrders);
 
-console.log({ userResult, orderResult });
+// Test big file functions
+const bigFileResultA = functionA();
+const bigFileResultE = functionE();
+const bigFileResultH = functionH();
+
+console.log({ userResult, orderResult, bigFileResultA, bigFileResultE, bigFileResultH });
