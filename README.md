@@ -39,6 +39,5 @@ A VS Code extension that displays code definitions in a stacked view instead of 
 
 ## TODO
 - Add color to StackView sections
-- Highlight definition in section
 - Add search functionality in StackView sections
 - Ability to shrink/enlarge sections

@@ -81,7 +81,9 @@ class StackViewPanel {
             const lines = frame.content.split('\n');
             const numberedLines = lines.map((line, lineIndex) => {
                 const lineNumber = lineIndex + 1;
-                return `<div class="code-line"><span class="line-number">${lineNumber}</span><span class="line-content" data-frame="${index}" data-line="${lineIndex}" onclick="handleClick(event, ${index}, ${lineIndex})" oncontextmenu="handleRightClick(event, ${index}, ${lineIndex})">${this.escapeHtml(line)}</span></div>`;
+                const isHighlighted = lineIndex >= frame.range.start.line && lineIndex <= frame.range.end.line;
+                const highlightClass = isHighlighted ? ' highlighted' : '';
+                return `<div class="code-line"><span class="line-number">${lineNumber}</span><span class="line-content${highlightClass}" data-frame="${index}" data-line="${lineIndex}" onclick="handleClick(event, ${index}, ${lineIndex})" oncontextmenu="handleRightClick(event, ${index}, ${lineIndex})">${this.escapeHtml(line)}</span></div>`;
             }).join('');
             return `
             <div class="frame">
@@ -192,6 +194,10 @@ class StackViewPanel {
                 .line-content:hover {
                     background: var(--vscode-editor-hoverHighlightBackground);
                 }
+                .line-content.highlighted {
+                    background: var(--vscode-editor-selectionBackground) !important;
+                    color: var(--vscode-editor-selectionForeground);
+                }
                 .caret {
                     position: absolute;
                     width: 1px;
@@ -237,10 +243,32 @@ class StackViewPanel {
                     const caret = document.createElement('div');
                     caret.className = 'caret';
                     
-                    // Position caret at click location
+                    // Get text content and calculate proper position
+                    const textContent = event.target.textContent || '';
                     const rect = event.target.getBoundingClientRect();
                     const clickX = event.clientX - rect.left;
-                    caret.style.left = clickX + 'px';
+                    
+                    // Calculate character position based on font metrics
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const computedStyle = window.getComputedStyle(event.target);
+                    ctx.font = computedStyle.fontSize + ' ' + computedStyle.fontFamily;
+                    
+                    let charPosition = 0;
+                    let accumulatedWidth = 0;
+                    
+                    for (let i = 0; i < textContent.length; i++) {
+                        const charWidth = ctx.measureText(textContent[i]).width;
+                        if (accumulatedWidth + charWidth / 2 > clickX) {
+                            break;
+                        }
+                        accumulatedWidth += charWidth;
+                        charPosition = i + 1;
+                    }
+                    
+                    // Position caret at the calculated character position
+                    const finalWidth = charPosition > 0 ? ctx.measureText(textContent.substring(0, charPosition)).width : 0;
+                    caret.style.left = Math.min(finalWidth, accumulatedWidth) + 'px';
                     caret.style.top = '0px';
                     
                     event.target.appendChild(caret);
