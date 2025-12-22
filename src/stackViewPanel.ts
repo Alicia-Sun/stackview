@@ -108,7 +108,7 @@ export class StackViewPanel {
             }).join('');
             
             return `
-            <div class="frame">
+            <div class="frame" style="height: 25vh; max-height: ${(lines.length * 1.2 + 3)}em;">
                 <div class="frame-header">
                     <span class="file-name">${frame.fileName}:${frame.lineNumber}</span>
                     <div class="header-buttons">
@@ -139,6 +139,10 @@ export class StackViewPanel {
                     border-radius: 6px;
                     margin-bottom: 16px;
                     overflow: hidden;
+                    resize: vertical;
+                    min-height: 100px;
+                    display: flex;
+                    flex-direction: column;
                 }
                 .frame-header {
                     background: var(--vscode-editorWidget-background);
@@ -183,15 +187,21 @@ export class StackViewPanel {
                     color: var(--vscode-errorForeground);
                 }
                 .frame-body {
-                    max-height: 30vh;
+                    flex: 1;
                     overflow: auto;
                     background: var(--vscode-editor-background);
+                    display: flex;
+                    flex-direction: column;
                 }
                 .code-container {
                     font-family: var(--vscode-editor-font-family);
                     font-size: var(--vscode-editor-font-size);
                     line-height: var(--vscode-editor-line-height);
                     color: var(--vscode-editor-foreground);
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: flex-start;
                 }
                 .code-line {
                     display: flex;
