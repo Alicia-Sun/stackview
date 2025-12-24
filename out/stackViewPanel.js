@@ -34,7 +34,17 @@ class StackViewPanel {
         if (index >= 0 && index < this.frames.length) {
             this.frames.splice(index, 1);
             this.updateWebview();
+            // Clean up stored data for removed frames
+            this.cleanupStoredData();
         }
+    }
+    cleanupStoredData() {
+        if (!this.panel)
+            return;
+        this.panel.webview.postMessage({
+            command: 'cleanupStoredData',
+            existingFrameIds: this.frames.map((_, index) => `frame-${index}`)
+        });
     }
     showPanel() {
         if (this.panel) {
@@ -69,6 +79,12 @@ class StackViewPanel {
             else if (message.command === 'removeFrame') {
                 this.removeFrame(message.frameIndex);
             }
+            else if (message.command === 'saveHeights') {
+                // Heights are automatically preserved by the webview state
+            }
+            else if (message.command === 'cleanupComplete') {
+                // Cleanup completed in webview
+            }
         });
     }
     updateWebview() {
@@ -83,10 +99,10 @@ class StackViewPanel {
                 const lineNumber = lineIndex + 1;
                 const isHighlighted = lineIndex >= frame.range.start.line && lineIndex <= frame.range.end.line;
                 const highlightClass = isHighlighted ? ' highlighted' : '';
-                return `<div class="code-line"><span class="line-number">${lineNumber}</span><span class="line-content${highlightClass}" data-frame="${index}" data-line="${lineIndex}" onclick="handleClick(event, ${index}, ${lineIndex})" oncontextmenu="handleRightClick(event, ${index}, ${lineIndex})">${this.escapeHtml(line)}</span></div>`;
+                return `<div class="code-line"><span class="line-number">${lineNumber}</span><span class="line-content${highlightClass}" data-frame="${index}" data-line="${lineIndex}" tabindex="0" onclick="handleClick(event, ${index}, ${lineIndex})" oncontextmenu="handleRightClick(event, ${index}, ${lineIndex})">${this.escapeHtml(line)}</span></div>`;
             }).join('');
             return `
-            <div class="frame" style="height: 25vh; max-height: ${(lines.length * 1.2 + 3)}em;">
+            <div class="frame" id="frame-${index}" style="max-height: ${(lines.length * 1.2 + 3)}em;">
                 <div class="frame-header">
                     <span class="file-name">${frame.fileName}:${frame.lineNumber}</span>
                     <div class="header-buttons">
@@ -118,6 +134,7 @@ class StackViewPanel {
                     overflow: hidden;
                     resize: vertical;
                     min-height: 100px;
+                    height: 25vh;
                     display: flex;
                     flex-direction: column;
                 }
@@ -200,6 +217,8 @@ class StackViewPanel {
                     cursor: text;
                     user-select: text;
                     position: relative;
+                    outline: none;
+                    tabindex: 0;
                 }
                 .line-content:hover {
                     background: var(--vscode-editor-hoverHighlightBackground);
@@ -242,8 +261,172 @@ class StackViewPanel {
             <script>
                 const vscode = acquireVsCodeApi();
                 let currentCaret = null;
+                let frameHeights = {};
+                let frameScrollPositions = {};
+                
+                // Restore heights from previous state
+                function restoreHeights() {
+                    const state = vscode.getState();
+                    if (state && state.frameHeights) {
+                        frameHeights = state.frameHeights;
+                        Object.keys(frameHeights).forEach(frameId => {
+                            const frame = document.getElementById(frameId);
+                            if (frame) {
+                                frame.style.height = frameHeights[frameId];
+                            }
+                        });
+                    }
+                    if (state && state.frameScrollPositions) {
+                        frameScrollPositions = state.frameScrollPositions;
+                        Object.keys(frameScrollPositions).forEach(frameId => {
+                            const frameBody = document.querySelector('#' + frameId + ' .frame-body');
+                            if (frameBody) {
+                                frameBody.scrollTop = frameScrollPositions[frameId];
+                            }
+                        });
+                    }
+                }
+                
+                // Save heights when frames are resized
+                function saveHeights() {
+                    const frames = document.querySelectorAll('.frame');
+                    frames.forEach(frame => {
+                        frameHeights[frame.id] = frame.style.height || '25vh';
+                        const frameBody = frame.querySelector('.frame-body');
+                        if (frameBody) {
+                            frameScrollPositions[frame.id] = frameBody.scrollTop;
+                        }
+                    });
+                    vscode.setState({ frameHeights, frameScrollPositions });
+                }
+                
+                // Set up resize observers
+                function setupResizeObservers() {
+                    const frames = document.querySelectorAll('.frame');
+                    frames.forEach(frame => {
+                        const resizeObserver = new ResizeObserver(() => {
+                            saveHeights();
+                        });
+                        resizeObserver.observe(frame);
+                        
+                        const frameBody = frame.querySelector('.frame-body');
+                        if (frameBody) {
+                            frameBody.addEventListener('scroll', saveHeights);
+                        }
+                    });
+                }
+                
+                // Initialize on load
+                window.addEventListener('load', () => {
+                    restoreHeights();
+                    setupResizeObservers();
+                });
+                
+                // Handle cleanup message from extension
+                window.addEventListener('message', event => {
+                    const message = event.data;
+                    if (message.command === 'cleanupStoredData') {
+                        const existingIds = new Set(message.existingFrameIds);
+                        
+                        // Remove data for non-existing frames
+                        Object.keys(frameHeights).forEach(frameId => {
+                            if (!existingIds.has(frameId)) {
+                                delete frameHeights[frameId];
+                            }
+                        });
+                        
+                        Object.keys(frameScrollPositions).forEach(frameId => {
+                            if (!existingIds.has(frameId)) {
+                                delete frameScrollPositions[frameId];
+                            }
+                        });
+                        
+                        vscode.setState({ frameHeights, frameScrollPositions });
+                        vscode.postMessage({ command: 'cleanupComplete' });
+                    }
+                });
+                
+                // Also restore heights immediately
+                setTimeout(() => {
+                    restoreHeights();
+                    setupResizeObservers();
+                    scrollToDefinitions();
+                }, 10);
+                
+                // Scroll new frames to their definition
+                function scrollToDefinitions() {
+                    const frames = document.querySelectorAll('.frame');
+                    frames.forEach(frame => {
+                        const frameBody = frame.querySelector('.frame-body');
+                        const frameId = frame.id;
+                        
+                        // Only scroll if no saved position exists
+                        if (frameBody && !frameScrollPositions[frameId]) {
+                            const highlightedLine = frame.querySelector('.line-content.highlighted');
+                            if (highlightedLine) {
+                                const lineHeight = parseFloat(getComputedStyle(highlightedLine).lineHeight) || 20;
+                                const containerHeight = frameBody.clientHeight;
+                                const codeContainer = frame.querySelector('.code-container');
+                                const targetScroll = highlightedLine.offsetTop - codeContainer.offsetTop - (containerHeight / 2) + (lineHeight / 2);
+                                frameBody.scrollTop = Math.max(0, targetScroll);
+                            }
+                        }
+                    });
+                }
+                
+                // Handle keyboard shortcuts
+                document.addEventListener('keydown', (event) => {
+                    // Alt+Ctrl+F12 (Windows) or Alt+Cmd+F12 (Mac)
+                    if (event.altKey && (event.ctrlKey || event.metaKey) && event.key === 'F12') {
+                        event.preventDefault();
+                        
+                        // Find the currently focused or last clicked element
+                        const activeElement = document.activeElement;
+                        let targetElement = null;
+                        
+                        if (activeElement && activeElement.classList.contains('line-content')) {
+                            targetElement = activeElement;
+                        } else if (currentCaret && currentCaret.parentElement) {
+                            targetElement = currentCaret.parentElement;
+                        }
+                        
+                        if (targetElement) {
+                            const frameIndex = parseInt(targetElement.dataset.frame);
+                            const lineIndex = parseInt(targetElement.dataset.line);
+                            
+                            // Calculate character position from caret or use 0
+                            let character = 0;
+                            if (currentCaret && currentCaret.parentElement === targetElement) {
+                                const textContent = targetElement.textContent || '';
+                                const caretLeft = parseFloat(currentCaret.style.left) || 0;
+                                
+                                // Estimate character position from caret position
+                                const canvas = document.createElement('canvas');
+                                const ctx = canvas.getContext('2d');
+                                const computedStyle = window.getComputedStyle(targetElement);
+                                ctx.font = computedStyle.fontSize + ' ' + computedStyle.fontFamily;
+                                
+                                let accumulatedWidth = 0;
+                                for (let i = 0; i < textContent.length; i++) {
+                                    const charWidth = ctx.measureText(textContent[i]).width;
+                                    if (accumulatedWidth >= caretLeft) {
+                                        character = i;
+                                        break;
+                                    }
+                                    accumulatedWidth += charWidth;
+                                    character = i + 1;
+                                }
+                            }
+                            
+                            goToDefinition(frameIndex, lineIndex, character);
+                        }
+                    }
+                });
                 
                 function handleClick(event, frameIndex, lineIndex) {
+                    // Focus the clicked element
+                    event.target.focus();
+                    
                     // Remove existing caret
                     if (currentCaret) {
                         currentCaret.remove();

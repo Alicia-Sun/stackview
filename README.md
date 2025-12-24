@@ -5,7 +5,7 @@ A VS Code extension that displays code definitions in a stacked view instead of 
 ## Features
 
 - Navigate to definitions using `Alt+Cmd+F12` (Mac) or `Alt+Ctrl+F12` (Windows)
-- Alternatively can click on function call, right-click + "Go to Definition (StackView)" to open the StackView window
+- Alternatively, you can click on function call, right-click + "Go to Definition (StackView)" to open the StackView window starting with that function's definition
 - View all definitions in a single panel with independently scrollable sections
 - Each section shows the function/method with surrounding context
 - Click "Open in Editor" to jump to the full file
@@ -26,11 +26,11 @@ A VS Code extension that displays code definitions in a stacked view instead of 
 
 ## Usage
 
-1. Place cursor on any function call or symbol
+1. Click on desired function call
 2. Press `Alt+Cmd+F12` (Mac) or `Alt+Ctrl+F12` (Windows), or right click + "Go to Definition (StackView)"
-3. The definition will appear in the StackView panel
-4. Repeat to build a stack of definitions
-5. Use "StackView: Clear Stack" command to reset or close the StackView tab
+3. The definition will appear in the StackView panel as a scrollable and resizable section
+4. Repeat steps 1-2 either in the original file or in a StackView section to build a stack of definitions all displayed cleanly in the same panel
+5. Use "StackView: Clear Stack" command to reset or simply close the StackView tab
 
 ## Commands
 
