@@ -11,7 +11,7 @@ export class StackViewPanel {
     private messageHandler: MessageHandler | undefined;
 
     constructor(private extensionUri: vscode.Uri) {
-        this.contentProvider = new WebviewContentProvider();
+        this.contentProvider = new WebviewContentProvider(extensionUri.fsPath);
     }
 
     async addFrame(uri: vscode.Uri, range: vscode.Range): Promise<void> {

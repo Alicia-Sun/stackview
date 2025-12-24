@@ -45,17 +45,20 @@ A VS Code extension that displays code definitions in a stacked view instead of 
 - **`stackViewPanel.ts`** - Main panel class that orchestrates the webview and frame management
 
 ### Component Files
-- **`webviewContent.ts`** - Handles HTML generation, CSS styles, and JavaScript for the webview
+- **`webviewContent.ts`** - Handles HTML generation and loads CSS/JS for the webview
+- **`webview.js`** - Client-side JavaScript for frame interactions, search, and resize functionality
+- **`styles.css`** - CSS styles for the webview interface
 - **`messageHandler.ts`** - Manages communication between webview and extension
 - **`types.ts`** - TypeScript interfaces and type definitions
-- **`constants.ts`** - Shared constants and configuration values
 
 
 ```
 extension.ts
     ↓
 stackViewPanel.ts
-    ├── webviewContent.ts (HTML/CSS/JS generation)
+    ├── webviewContent.ts (HTML generation)
+    │   ├── webview.js (client-side functionality)
+    │   └── styles.css (styling)
     ├── messageHandler.ts (webview communication)
     └── types.ts (shared interfaces)
 ```

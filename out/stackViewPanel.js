@@ -9,7 +9,7 @@ class StackViewPanel {
     constructor(extensionUri) {
         this.extensionUri = extensionUri;
         this.frames = [];
-        this.contentProvider = new webviewContent_1.WebviewContentProvider();
+        this.contentProvider = new webviewContent_1.WebviewContentProvider(extensionUri.fsPath);
     }
     async addFrame(uri, range) {
         const document = await vscode.workspace.openTextDocument(uri);
