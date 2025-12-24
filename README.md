@@ -12,7 +12,7 @@ A simple VS Code extension for displaying code definitions in a stacked view ins
 - Each section shows the function/method with surrounding context
 - Click "Open in Editor" to jump to the full file
 
-## Setup
+## Developer Setup
 
 1. Install dependencies:
    ```

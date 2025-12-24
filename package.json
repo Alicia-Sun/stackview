@@ -61,7 +61,8 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
+    "compile": "tsc -p ./ && npm run copy-assets",
+    "copy-assets": "copy src\\styles.css out\\styles.css && copy src\\webview.js out\\webview.js",
     "watch": "tsc -watch -p ./"
   },
   "devDependencies": {

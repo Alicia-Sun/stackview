@@ -6,8 +6,8 @@ const path = require("path");
 class WebviewContentProvider {
     constructor(extensionPath) {
         this.extensionPath = extensionPath;
-        this.cssContent = fs.readFileSync(path.join(extensionPath, 'src', 'styles.css'), 'utf8');
-        this.jsContent = fs.readFileSync(path.join(extensionPath, 'src', 'webview.js'), 'utf8');
+        this.cssContent = fs.readFileSync(path.join(extensionPath, 'out', 'styles.css'), 'utf8');
+        this.jsContent = fs.readFileSync(path.join(extensionPath, 'out', 'webview.js'), 'utf8');
     }
     generateContent(frames) {
         return `
