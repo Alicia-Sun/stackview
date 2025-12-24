@@ -1,8 +1,28 @@
 {
   "name": "stackview",
   "displayName": "StackView",
-  "description": "Navigate code definitions in a stacked view",
+  "description": "Navigate code definitions in a stacked view instead of opening multiple tabs",
   "version": "0.0.1",
+  "publisher": "AliciaSun",
+  "author": {
+    "name": "Alicia Sun"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Alicia-Sun/stackview.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Alicia-Sun/stackview/issues"
+  },
+  "homepage": "https://github.com/Alicia-Sun/stackview#readme",
+  "keywords": [
+    "debug",
+    "definition",
+    "stack",
+    "code",
+    "goto"
+  ],
   "engines": {
     "vscode": "^1.74.0"
   },
