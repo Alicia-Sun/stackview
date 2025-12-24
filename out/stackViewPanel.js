@@ -106,6 +106,14 @@ class StackViewPanel {
                 <div class="frame-header">
                     <span class="file-name">${frame.fileName}:${frame.lineNumber}</span>
                     <div class="header-buttons">
+                        <div class="search-container">
+                            <input type="text" class="search-box" placeholder="Search..." onkeyup="handleSearch(event, ${index})" onkeydown="handleSearchKeydown(event, ${index})" />
+                            <div class="search-nav">
+                                <button onclick="navigateSearch(${index}, -1)" title="Previous">↑</button>
+                                <button onclick="navigateSearch(${index}, 1)" title="Next">↓</button>
+                                <span class="search-count" id="search-count-${index}"></span>
+                            </div>
+                        </div>
                         <button onclick="openFile(${index})" class="open-button">Open in Editor</button>
                         <button onclick="removeFrame(${index})" class="close-button">×</button>
                     </div>
@@ -153,6 +161,55 @@ class StackViewPanel {
                 .header-buttons {
                     display: flex;
                     gap: 4px;
+                    align-items: center;
+                }
+                .search-container {
+                    display: flex;
+                    align-items: center;
+                    gap: 2px;
+                }
+                .search-box {
+                    background: var(--vscode-input-background);
+                    color: var(--vscode-input-foreground);
+                    border: 1px solid var(--vscode-input-border);
+                    padding: 2px 6px;
+                    border-radius: 3px;
+                    font-size: 11px;
+                    width: 120px;
+                }
+                .search-box:focus {
+                    outline: 1px solid var(--vscode-focusBorder);
+                }
+                .search-nav {
+                    display: flex;
+                    align-items: center;
+                    gap: 1px;
+                }
+                .search-nav button {
+                    background: var(--vscode-button-secondaryBackground);
+                    color: var(--vscode-button-secondaryForeground);
+                    border: none;
+                    padding: 2px 4px;
+                    border-radius: 2px;
+                    cursor: pointer;
+                    font-size: 10px;
+                    min-width: 16px;
+                    height: 16px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .search-nav button:hover {
+                    background: var(--vscode-button-secondaryHoverBackground);
+                }
+                .search-nav button:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+                .search-count {
+                    font-size: 10px;
+                    color: var(--vscode-descriptionForeground);
+                    margin: 0 2px;
                 }
                 .open-button {
                     background: var(--vscode-button-background);
@@ -227,6 +284,14 @@ class StackViewPanel {
                     background: var(--vscode-editor-selectionBackground) !important;
                     color: var(--vscode-editor-selectionForeground);
                 }
+                .search-highlight {
+                    background: #ffff99 !important;
+                    color: #000 !important;
+                }
+                .search-highlight.current {
+                    background: #ff9900 !important;
+                    color: #fff !important;
+                }
                 .caret {
                     position: absolute;
                     width: 1px;
@@ -263,6 +328,7 @@ class StackViewPanel {
                 let currentCaret = null;
                 let frameHeights = {};
                 let frameScrollPositions = {};
+                let searchStates = {};
                 
                 // Restore heights from previous state
                 function restoreHeights() {
@@ -376,6 +442,20 @@ class StackViewPanel {
                 
                 // Handle keyboard shortcuts
                 document.addEventListener('keydown', (event) => {
+                    // Ctrl+F or Cmd+F for search
+                    if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+                        event.preventDefault();
+                        const activeFrame = document.querySelector('.frame:hover') || document.querySelector('.frame');
+                        if (activeFrame) {
+                            const searchBox = activeFrame.querySelector('.search-box');
+                            if (searchBox) {
+                                searchBox.focus();
+                                searchBox.select();
+                            }
+                        }
+                        return;
+                    }
+                    
                     // Alt+Ctrl+F12 (Windows) or Alt+Cmd+F12 (Mac)
                     if (event.altKey && (event.ctrlKey || event.metaKey) && event.key === 'F12') {
                         event.preventDefault();
@@ -523,6 +603,149 @@ class StackViewPanel {
                         command: 'removeFrame',
                         frameIndex: frameIndex
                     });
+                }
+                
+                function handleSearchKeydown(event, frameIndex) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        navigateSearch(frameIndex, event.shiftKey ? -1 : 1);
+                    } else if (event.key === 'Escape') {
+                        event.target.blur();
+                        clearSearch(frameIndex);
+                    }
+                }
+                
+                function handleSearch(event, frameIndex) {
+                    const searchTerm = event.target.value;
+                    const frame = document.getElementById('frame-' + frameIndex);
+                    const lines = frame.querySelectorAll('.line-content');
+                    
+                    // Clear previous highlights
+                    lines.forEach(line => {
+                        const originalText = line.dataset.originalText || line.textContent;
+                        line.dataset.originalText = originalText;
+                        line.innerHTML = originalText;
+                    });
+                    
+                    if (!searchTerm) {
+                        searchStates[frameIndex] = null;
+                        updateSearchCount(frameIndex, 0, 0);
+                        return;
+                    }
+                    
+                    // Find and highlight matches
+                    const matches = [];
+                    lines.forEach((line, lineIdx) => {
+                        const text = line.dataset.originalText || line.textContent;
+                        const lowerText = text.toLowerCase();
+                        const lowerSearch = searchTerm.toLowerCase();
+                        
+                        let highlightedText = text;
+                        let lastIndex = 0;
+                        let matchIndex = lowerText.indexOf(lowerSearch);
+                        
+                        if (matchIndex !== -1) {
+                            highlightedText = '';
+                            while (matchIndex !== -1) {
+                                highlightedText += text.substring(lastIndex, matchIndex);
+                                highlightedText += '<span class="search-highlight">' + text.substring(matchIndex, matchIndex + searchTerm.length) + '</span>';
+                                matches.push({ line: lineIdx, element: line });
+                                lastIndex = matchIndex + searchTerm.length;
+                                matchIndex = lowerText.indexOf(lowerSearch, lastIndex);
+                            }
+                            highlightedText += text.substring(lastIndex);
+                            line.innerHTML = highlightedText;
+                        }
+                    });
+                    
+                    // Update search state
+                    searchStates[frameIndex] = {
+                        matches: matches,
+                        currentIndex: matches.length > 0 ? 0 : -1,
+                        term: searchTerm
+                    };
+                    
+                    updateSearchCount(frameIndex, matches.length, matches.length > 0 ? 1 : 0);
+                    
+                    if (matches.length > 0) {
+                        highlightCurrentMatch(frameIndex);
+                        scrollToCurrentMatch(frameIndex);
+                    }
+                }
+                
+                function navigateSearch(frameIndex, direction) {
+                    const state = searchStates[frameIndex];
+                    if (!state || state.matches.length === 0) return;
+                    
+                    // Remove current highlight
+                    const currentHighlight = document.querySelector('#frame-' + frameIndex + ' .search-highlight.current');
+                    if (currentHighlight) {
+                        currentHighlight.classList.remove('current');
+                    }
+                    
+                    // Update index
+                    state.currentIndex += direction;
+                    if (state.currentIndex >= state.matches.length) {
+                        state.currentIndex = 0;
+                    } else if (state.currentIndex < 0) {
+                        state.currentIndex = state.matches.length - 1;
+                    }
+                    
+                    updateSearchCount(frameIndex, state.matches.length, state.currentIndex + 1);
+                    highlightCurrentMatch(frameIndex);
+                    scrollToCurrentMatch(frameIndex);
+                }
+                
+                function highlightCurrentMatch(frameIndex) {
+                    const state = searchStates[frameIndex];
+                    if (!state || state.currentIndex === -1) return;
+                    
+                    const frame = document.getElementById('frame-' + frameIndex);
+                    const highlights = frame.querySelectorAll('.search-highlight');
+                    
+                    highlights.forEach((highlight, idx) => {
+                        highlight.classList.toggle('current', idx === state.currentIndex);
+                    });
+                }
+                
+                function scrollToCurrentMatch(frameIndex) {
+                    const state = searchStates[frameIndex];
+                    if (!state || state.currentIndex === -1) return;
+                    
+                    const frame = document.getElementById('frame-' + frameIndex);
+                    const currentMatch = frame.querySelectorAll('.search-highlight')[state.currentIndex];
+                    
+                    if (currentMatch) {
+                        const frameBody = frame.querySelector('.frame-body');
+                        const codeContainer = frame.querySelector('.code-container');
+                        const targetScroll = currentMatch.offsetTop - codeContainer.offsetTop - (frameBody.clientHeight / 2);
+                        frameBody.scrollTop = Math.max(0, targetScroll);
+                    }
+                }
+                
+                function updateSearchCount(frameIndex, total, current) {
+                    const countElement = document.getElementById('search-count-' + frameIndex);
+                    if (countElement) {
+                        countElement.textContent = total > 0 ? current + '/' + total : '';
+                    }
+                    
+                    const frame = document.getElementById('frame-' + frameIndex);
+                    const prevBtn = frame.querySelector('.search-nav button:first-child');
+                    const nextBtn = frame.querySelector('.search-nav button:nth-child(2)');
+                    
+                    if (prevBtn && nextBtn) {
+                        prevBtn.disabled = total === 0;
+                        nextBtn.disabled = total === 0;
+                    }
+                }
+                
+                function clearSearch(frameIndex) {
+                    const frame = document.getElementById('frame-' + frameIndex);
+                    const searchBox = frame.querySelector('.search-box');
+                    if (searchBox) {
+                        searchBox.value = '';
+                        handleSearch({ target: searchBox }, frameIndex);
+                    }
                 }
             </script>
         </body>
