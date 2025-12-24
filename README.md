@@ -37,6 +37,25 @@ A VS Code extension that displays code definitions in a stacked view instead of 
 - `StackView: Go to Definition` - Add definition to stack
 - `StackView: Clear Stack` - Clear all frames
 
-## TODO
-- Add color to StackView sections
-- Add search functionality in StackView sections
+
+## Files Overview
+
+### Core Files
+- **`extension.ts`** - Main extension entry point, registers commands and activates the extension
+- **`stackViewPanel.ts`** - Main panel class that orchestrates the webview and frame management
+
+### Component Files
+- **`webviewContent.ts`** - Handles HTML generation, CSS styles, and JavaScript for the webview
+- **`messageHandler.ts`** - Manages communication between webview and extension
+- **`types.ts`** - TypeScript interfaces and type definitions
+- **`constants.ts`** - Shared constants and configuration values
+
+
+```
+extension.ts
+    ↓
+stackViewPanel.ts
+    ├── webviewContent.ts (HTML/CSS/JS generation)
+    ├── messageHandler.ts (webview communication)
+    └── types.ts (shared interfaces)
+```

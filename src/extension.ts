@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
 import { StackViewPanel } from './stackViewPanel';
+import { COMMANDS } from './constants';
 
 export function activate(context: vscode.ExtensionContext) {
     const stackViewPanel = new StackViewPanel(context.extensionUri);
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('stackview.goToDefinition', async () => {
+        vscode.commands.registerCommand(COMMANDS.GO_TO_DEFINITION, async () => {
             const editor = vscode.window.activeTextEditor;
             if (!editor) return;
 
@@ -27,7 +28,7 @@ export function activate(context: vscode.ExtensionContext) {
             await stackViewPanel.addFrame(uri, range);
         }),
 
-        vscode.commands.registerCommand('stackview.clearStack', () => {
+        vscode.commands.registerCommand(COMMANDS.CLEAR_STACK, () => {
             stackViewPanel.clearFrames();
         })
     );

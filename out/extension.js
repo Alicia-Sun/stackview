@@ -3,9 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.deactivate = exports.activate = void 0;
 const vscode = require("vscode");
 const stackViewPanel_1 = require("./stackViewPanel");
+const constants_1 = require("./constants");
 function activate(context) {
     const stackViewPanel = new stackViewPanel_1.StackViewPanel(context.extensionUri);
-    context.subscriptions.push(vscode.commands.registerCommand('stackview.goToDefinition', async () => {
+    context.subscriptions.push(vscode.commands.registerCommand(constants_1.COMMANDS.GO_TO_DEFINITION, async () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor)
             return;
@@ -20,7 +21,7 @@ function activate(context) {
         if (!range)
             return;
         await stackViewPanel.addFrame(uri, range);
-    }), vscode.commands.registerCommand('stackview.clearStack', () => {
+    }), vscode.commands.registerCommand(constants_1.COMMANDS.CLEAR_STACK, () => {
         stackViewPanel.clearFrames();
     }));
 }
