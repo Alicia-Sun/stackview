@@ -1,6 +1,7 @@
 # StackView
 
 A simple VS Code extension for displaying code definitions in a stacked view instead of opening multiple tabs, now available on the vscode extension marketplace
+
 <img width="1542" height="883" alt="StackViewDemo" src="https://github.com/user-attachments/assets/1274152c-0dd2-4010-8560-12bcc88a8ffb" />
 
 
